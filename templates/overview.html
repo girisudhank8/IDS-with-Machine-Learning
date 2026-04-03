@@ -1,0 +1,98 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<div class="overview-hero">
+    <div class="hero-overlay">
+        <h1 class="hero-title">IDS with Machine Learning</h1>
+        <p class="hero-subtitle">Intrusion detection powered by CIC-IoT23 and a balanced binary training pipeline.</p>
+    </div>
+</div>
+
+<div class="stats-bar">
+    <div class="stats-bar-item">
+        <div class="stats-bar-value text-primary">{{ model_metrics.xgboost.accuracy if model_metrics and model_metrics.xgboost else '?' }}{% if model_metrics and model_metrics.xgboost %}%{% endif %}</div>
+        <div class="stats-bar-label">Accuracy</div>
+    </div>
+    <div class="stats-bar-item">
+        <div class="stats-bar-value">CIC-IoT23</div>
+        <div class="stats-bar-label">Dataset</div>
+    </div>
+    <div class="stats-bar-item">
+        <div class="stats-bar-value text-success">{{ model_metrics.meta.balanced_samples if model_metrics and model_metrics.meta and model_metrics.meta.balanced_samples else (model_metrics.meta.train_samples if model_metrics and model_metrics.meta else '?') }}</div>
+        <div class="stats-bar-label">Balanced Rows</div>
+    </div>
+    <div class="stats-bar-item">
+        <div class="stats-bar-value text-info">{{ feature_count }}</div>
+        <div class="stats-bar-label">Feature Count</div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-md-6">
+        <div class="info-panel panel-green">
+            <h5><i class="bi bi-database me-2"></i> Training Dataset</h5>
+            <p class="text-muted">The full pipeline uses CIC-IoT23 only, from training through upload and live monitoring.</p>
+            <ul class="info-list">
+                <li><i class="bi bi-check-circle text-success me-2"></i> <strong>Dataset:</strong> CIC-IoT23</li>
+                <li><i class="bi bi-check-circle text-success me-2"></i> <strong>39 selected numeric flow features</strong> are used during training</li>
+                <li><i class="bi bi-check-circle text-success me-2"></i> <strong>SMOTE balances the row distribution</strong> between Benign and Attack</li>
+                <li><i class="bi bi-check-circle text-success me-2"></i> <strong>The feature count stays 39</strong>; balancing changes rows, not columns</li>
+                {% if model_metrics and model_metrics.meta %}
+                <li><i class="bi bi-check-circle text-success me-2"></i> Last training used <strong>{{ model_metrics.meta.train_samples }}</strong> train rows and <strong>{{ model_metrics.meta.test_samples }}</strong> test rows</li>
+                {% endif %}
+                {% if model_metrics and model_metrics.xgboost %}
+                <li><i class="bi bi-check-circle text-success me-2"></i> XGBoost accuracy: <strong>{{ model_metrics.xgboost.accuracy }}%</strong></li>
+                {% endif %}
+            </ul>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="info-panel panel-mint">
+            <h5><i class="bi bi-gear me-2"></i> Technology Stack</h5>
+            <p class="text-muted">Random Forest, Decision Tree, and XGBoost are evaluated on the same balanced CIC-IoT23 rows, then XGBoost is used for prediction.</p>
+            <div class="row">
+                <div class="col-6">
+                    <ul class="info-list">
+                        <li><i class="bi bi-check-circle text-success me-2"></i> <strong>Python 3.9+</strong></li>
+                        <li><i class="bi bi-check-circle text-success me-2"></i> <strong>Pandas/NumPy</strong></li>
+                        <li><i class="bi bi-check-circle text-success me-2"></i> <strong>Scikit-learn</strong></li>
+                        <li><i class="bi bi-check-circle text-success me-2"></i> <strong>Flask</strong></li>
+                    </ul>
+                </div>
+                <div class="col-6">
+                    <ul class="info-list">
+                        <li><i class="bi bi-check-circle text-success me-2"></i> <strong>SMOTE</strong></li>
+                        <li><i class="bi bi-check-circle text-success me-2"></i> <strong>Random Forest</strong></li>
+                        <li><i class="bi bi-check-circle text-success me-2"></i> <strong>Decision Tree</strong></li>
+                        <li><i class="bi bi-check-circle text-success me-2"></i> <strong>XGBoost</strong></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="section-card mt-4">
+    <h5 class="section-title"><i class="bi bi-lightbulb-fill text-warning me-2"></i> Training Pipeline</h5>
+    <div class="mt-2 p-3" style="background:#f8f9fa;border-radius:10px">
+        <ol class="small text-muted mb-0">
+            <li><strong>Load Merged01.csv and Merged02.csv</strong></li>
+            <li><strong>Keep the same 39 CIC-IoT23 feature columns</strong></li>
+            <li><strong>Map detailed labels to binary classes</strong>: Benign vs Attack</li>
+            <li><strong>Clean missing and infinite values</strong></li>
+            <li><strong>Balance the rows with SMOTE</strong> and save them as <code>balanced_data.csv</code></li>
+            <li><strong>Train RF, DT, and XGBoost</strong> on the balanced rows</li>
+            <li><strong>Use XGBoost</strong> for uploads and live monitoring</li>
+        </ol>
+    </div>
+</div>
+
+<div class="cta-section text-center">
+    <h4 class="text-success fw-bold">Ready to analyze traffic?</h4>
+    <p class="text-muted">Train once, then reuse the detector for uploads and live monitoring.</p>
+    <a href="{{ url_for('upload') }}" class="btn-cta">
+        <i class="bi bi-cloud-upload me-2"></i> Upload and Analyze Data
+    </a>
+</div>
+
+{% endblock %}

@@ -1,0 +1,30 @@
+{
+  "random_forest": {
+    "accuracy": 99.56,
+    "precision": 99.84,
+    "recall": 99.28,
+    "f1_score": 99.56
+  },
+  "decision_tree": {
+    "accuracy": 99.32,
+    "precision": 99.82,
+    "recall": 98.83,
+    "f1_score": 99.32
+  },
+  "xgboost": {
+    "accuracy": 99.59,
+    "precision": 99.77,
+    "recall": 99.41,
+    "f1_score": 99.59
+  },
+  "meta": {
+    "dataset": "CIC-IoT23 Dataset",
+    "dataset_key": "ciciot23",
+    "features": 39,
+    "train_samples": 228286,
+    "test_samples": 57072,
+    "balanced_samples": 285358,
+    "sample_fraction": 0.1,
+    "balancing_method": "SMOTE"
+  }
+}

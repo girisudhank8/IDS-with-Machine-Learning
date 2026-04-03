@@ -1,0 +1,215 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3 class="page-title"><i class="bi bi-file-earmark-bar-graph me-2"></i> Reports and Analysis</h3>
+    <a href="{{ url_for('export_csv') }}" class="text-success fw-semibold text-decoration-none">
+        <i class="bi bi-download me-1"></i> Export Full CSV
+    </a>
+</div>
+
+<!-- ═══ FILTER AND SEARCH ═══ -->
+<div class="filter-section">
+    <div class="filter-header"><i class="bi bi-funnel me-2"></i> Filter and Search</div>
+    <form method="GET" class="row g-3 p-3">
+        <div class="col-md-3">
+            <label class="form-label small">Attack Type</label>
+            <select name="attack_type" class="form-select">
+                <option value="All Types">All Types</option>
+                {% for attack_name in attack_type_options %}
+                <option value="{{ attack_name }}" {% if attack_type_filter == attack_name %}selected{% endif %}>{{ attack_name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label small">From Date</label>
+            <input type="date" class="form-control" name="from_date">
+        </div>
+        <div class="col-md-3">
+            <label class="form-label small">To Date</label>
+            <input type="date" class="form-control" name="to_date">
+        </div>
+        <div class="col-md-3">
+            <label class="form-label small">IP Address</label>
+            <input type="text" class="form-control" name="ip_address" value="{{ ip_filter }}" placeholder="192.168.1.1">
+        </div>
+        <div class="col-12">
+            <button type="submit" class="btn-apply-filter"><i class="bi bi-search me-1"></i> Apply Filters</button>
+            <a href="{{ url_for('reports') }}" class="btn-clear-filter ms-2"><i class="bi bi-x-circle me-1"></i> Clear Filters</a>
+        </div>
+    </form>
+</div>
+
+<!-- ═══ STAT CARDS ═══ -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="report-stat-card bg-stat-blue">
+            <div class="report-stat-icon"><i class="bi bi-bar-chart-fill"></i></div>
+            <div class="report-stat-value">{{ total }}</div>
+            <div class="report-stat-label">Total Records</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="report-stat-card bg-stat-red">
+            <div class="report-stat-icon"><i class="bi bi-shield-exclamation"></i></div>
+            <div class="report-stat-value">{{ attacks }}</div>
+            <div class="report-stat-label">Threats Detected</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="report-stat-card bg-stat-green">
+            <div class="report-stat-icon"><i class="bi bi-shield-check"></i></div>
+            <div class="report-stat-value">{{ benign }}</div>
+            <div class="report-stat-label">Normal Traffic</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="report-stat-card bg-stat-yellow">
+            <div class="report-stat-icon"><i class="bi bi-percent"></i></div>
+            <div class="report-stat-value">{{ avg_conf }}%</div>
+            <div class="report-stat-label">Average Confidence</div>
+        </div>
+    </div>
+</div>
+
+<!-- ═══ CHARTS ═══ -->
+<div class="row g-4 mb-4">
+    <div class="col-lg-7">
+        <div class="chart-card">
+            <div class="chart-card-header bg-gradient-orange">
+                <i class="bi bi-graph-up me-2"></i> Attack Types Distribution
+            </div>
+            <div class="p-3">
+                <div style="position:relative;height:280px"><canvas id="reportBarChart"></canvas></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-5">
+        <div class="chart-card">
+            <div class="chart-card-header bg-gradient-orange">
+                <i class="bi bi-pie-chart me-2"></i> Prediction Results
+            </div>
+            <div class="p-3">
+                <div style="position:relative;height:280px"><canvas id="reportDonutChart"></canvas></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ═══ DOWNLOAD OPTIONS ═══ -->
+<p class="text-muted mb-2">Download analysis results in your preferred format</p>
+
+<!-- ═══ DETAILED RESULTS TABLE ═══ -->
+<div class="table-card">
+    <div class="table-card-header">
+        <span><i class="bi bi-table me-2"></i> Detailed Analysis Results</span>
+        <div class="d-flex gap-2 align-items-center">
+            <select class="form-select form-select-sm" style="width:120px" id="filterType">
+                <option value="all">All Results</option>
+                <option value="attack">Attacks</option>
+                <option value="normal">Normal</option>
+            </select>
+            <select class="form-select form-select-sm" style="width:100px" id="perPage" onchange="changePerPage()">
+                <option value="25">25 per page</option>
+                <option value="50">50 per page</option>
+                <option value="100">100 per page</option>
+                <option value="999999">All</option>
+            </select>
+            <input type="text" class="form-control form-control-sm" style="width:140px" placeholder="Search..." id="tableSearch" onkeyup="filterTable()">
+        </div>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover mb-0" id="resultsTable">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>IP Address</th>
+                    <th>Prediction</th>
+                    <th>Attack Type</th>
+                    <th>Confidence</th>
+                    <th>Timestamp</th>
+                </tr>
+            </thead>
+            <tbody id="resultsBody">
+                {% if results %}
+                    {% for r in results %}
+                    <tr class="result-row" data-prediction="{{ r.prediction }}">
+                        <td>{{ r.id }}</td>
+                        <td>{{ r.ip_address }}</td>
+                        <td>
+                            <span class="badge {% if r.prediction == 'Attack' %}bg-danger{% else %}bg-success{% endif %}">
+                                {{ r.prediction|upper }}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="badge badge-attack-type">{{ r.attack_type }}</span>
+                        </td>
+                        <td>
+                            <div class="confidence-bar-wrap">
+                                <div class="confidence-bar-fill {% if r.confidence > 80 %}bg-success{% elif r.confidence > 50 %}bg-warning{% else %}bg-danger{% endif %}" style="width:{{ r.confidence }}%"></div>
+                                <span class="confidence-text">{{ r.confidence }}%</span>
+                            </div>
+                        </td>
+                        <td>{{ r.timestamp }}</td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr><td colspan="6" class="text-center text-muted py-4">No results yet. Upload a CSV to analyze network traffic.</td></tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const reportAttackTypes = {{ attack_types|safe }};
+    initReportCharts(reportAttackTypes, {{ attacks }}, {{ benign }});
+
+    function applyTableView() {
+        const query = document.getElementById('tableSearch').value.toLowerCase();
+        const filterType = document.getElementById('filterType').value;
+        const perPage = parseInt(document.getElementById('perPage').value, 10);
+        const rows = Array.from(document.querySelectorAll('#resultsTable tbody .result-row'));
+        const matchingRows = rows.filter(row => {
+            const matchesQuery = row.textContent.toLowerCase().includes(query);
+            const prediction = (row.dataset.prediction || '').toLowerCase();
+            const matchesType = filterType === 'all' || prediction === filterType;
+            return matchesQuery && matchesType;
+        });
+
+        rows.forEach(row => row.style.display = 'none');
+        matchingRows.forEach((row, index) => {
+            row.style.display = index < perPage ? '' : 'none';
+        });
+
+        const body = document.getElementById('resultsBody');
+        let emptyRow = document.getElementById('tableNoResults');
+        if (matchingRows.length === 0) {
+            if (!emptyRow) {
+                emptyRow = document.createElement('tr');
+                emptyRow.id = 'tableNoResults';
+                emptyRow.innerHTML = '<td colspan="6" class="text-center text-muted py-4">No matching results for the current filters.</td>';
+                body.appendChild(emptyRow);
+            }
+        } else if (emptyRow) {
+            emptyRow.remove();
+        }
+    }
+
+    function filterTable() {
+        applyTableView();
+    }
+
+    function changePerPage() {
+        applyTableView();
+    }
+
+    document.getElementById('filterType').addEventListener('change', applyTableView);
+    document.addEventListener('DOMContentLoaded', () => {
+        applyTableView();
+    });
+</script>
+{% endblock %}

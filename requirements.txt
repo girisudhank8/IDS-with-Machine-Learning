@@ -1,0 +1,11 @@
+pandas
+scikit-learn
+xgboost
+flask
+shap
+imbalanced-learn
+matplotlib
+joblib
+numpy
+psutil
+scapy

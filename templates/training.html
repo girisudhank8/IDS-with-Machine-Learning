@@ -1,0 +1,173 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3 class="page-title"><i class="bi bi-cpu me-2"></i> Model Training</h3>
+    <div>
+        {% if model_dataset %}
+        <span class="badge bg-success fs-6"><i class="bi bi-check-circle me-1"></i> CIC-IoT23 Ready ({{ feature_count }} features)</span>
+        {% elif feature_count > 0 %}
+        <span class="badge bg-success fs-6"><i class="bi bi-check-circle me-1"></i> Detector Ready ({{ feature_count }} features)</span>
+        {% else %}
+        <span class="badge bg-warning fs-6"><i class="bi bi-exclamation-triangle me-1"></i> No detector loaded</span>
+        {% endif %}
+    </div>
+</div>
+
+<div class="section-card mb-4">
+    <h5 class="section-title"><i class="bi bi-question-circle me-2"></i> CIC-IoT23 Training</h5>
+    <p class="text-muted mb-3">Each run samples CIC-IoT23, keeps the same 39 selected feature columns, balances the rows with SMOTE, and then trains Random Forest, Decision Tree, and XGBoost.</p>
+    <div class="row g-3">
+        {% for key, algo in algorithms.items() %}
+        <div class="col-md-4">
+            <div class="p-3" style="border-radius:10px;border-left:3px solid var(--bs-{{ algo.color }});background:rgba(0,0,0,0.02)">
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <i class="bi {{ algo.icon }} text-{{ algo.color }} fs-4"></i>
+                    <div>
+                        <h6 class="mb-0 fw-bold">{{ algo.name }}</h6>
+                        <span class="badge bg-{{ algo.color }} bg-opacity-10 text-{{ algo.color }}">{{ algo.badge }}</span>
+                    </div>
+                </div>
+                <p class="small text-muted mb-1">{{ algo.description }}</p>
+                <p class="small mb-0"><strong>Role:</strong> {{ algo.use }}</p>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<div class="section-card mb-4">
+    <h5 class="section-title"><i class="bi bi-database me-2"></i> CIC-IoT23 Dataset</h5>
+    <div class="algo-card dataset-card" style="border:2px solid #27AE60; box-shadow:0 0 12px rgba(39,174,96,0.15);">
+        <span class="algo-badge badge-green"><i class="bi bi-database-fill"></i> CIC-IoT23</span>
+        <h6 class="algo-name mt-2">CIC-IoT23 Dataset</h6>
+        <p class="algo-desc small">Training uses <code>Merged01.csv</code> and <code>Merged02.csv</code>. The selected 39 CIC-IoT23 columns stay the same, while SMOTE balances the Benign and Attack row counts.</p>
+        <div class="d-flex justify-content-between small">
+            <span class="text-muted"><i class="bi bi-columns-gap me-1"></i> 39 features</span>
+            <span class="text-muted"><i class="bi bi-file-earmark me-1"></i> 2 file(s)</span>
+        </div>
+        <div class="mt-2 d-flex gap-2 flex-wrap">
+            {% if trained_models['ciciot23'].trained %}<span class="badge bg-primary">Trained</span>{% else %}<span class="badge bg-secondary">Not trained</span>{% endif %}
+            <span class="badge bg-success">Detector</span>
+        </div>
+        <small class="text-muted d-block mt-1"><i class="bi bi-file-csv me-1"></i> Merged01.csv</small>
+        <small class="text-muted d-block mt-1"><i class="bi bi-file-csv me-1"></i> Merged02.csv</small>
+        <div class="mt-2 p-2" style="background:rgba(39,174,96,0.05);border-radius:6px">
+            <small class="text-muted"><i class="bi bi-lightbulb text-warning me-1"></i> Balancing changes the number of rows, not the 39 selected feature columns.</small>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-md-6">
+        <div class="section-card h-100">
+            <h5 class="section-title"><i class="bi bi-gear me-2"></i> Training Configuration</h5>
+            <div class="mb-3">
+                <label class="form-label fw-semibold">Dataset</label>
+                <input type="text" class="form-control" readonly value="CIC-IoT23 Dataset">
+            </div>
+            <div class="mb-3">
+                <small class="text-muted">Each run samples CIC-IoT23, writes a balanced <code>balanced_data.csv</code>, and trains the three classifiers on those balanced rows.</small>
+            </div>
+            <div class="mb-3">
+                <label class="form-label fw-semibold">Sample Fraction</label>
+                <input type="range" class="form-range" id="sampleFrac" min="0.05" max="1" step="0.05" value="0.1" oninput="document.getElementById('fracLabel').textContent=Math.round(this.value*100)+'%'">
+                <small class="text-muted">Using <span id="fracLabel">10%</span> of CIC-IoT23 before balancing</small>
+            </div>
+            <button class="btn-start-analysis w-100" id="btnTrain" onclick="startTraining()"><i class="bi bi-play-circle me-2"></i> Start Training</button>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="section-card h-100">
+            <h5 class="section-title"><i class="bi bi-graph-up-arrow me-2"></i> Training Progress</h5>
+            <div class="mb-3">
+                <div class="d-flex justify-content-between mb-1"><span class="fw-semibold" id="progressMessage">Ready</span><span class="fw-semibold" id="progressPercent">0%</span></div>
+                <div class="progress" style="height:20px;border-radius:10px"><div class="progress-bar bg-success progress-bar-striped progress-bar-animated" id="progressBar" style="width:0%"></div></div>
+            </div>
+            <div id="metricsSection" style="display:none">
+                <h6 class="fw-bold text-success"><i class="bi bi-check-circle-fill me-1"></i> Complete</h6>
+                <div class="p-2 mt-1" style="border-left:3px solid #e74c3c;background:rgba(231,76,60,0.03);border-radius:6px"><strong class="text-danger small">Random Forest</strong><small class="d-block">Accuracy: <strong id="rfAcc">-</strong> | F1: <strong id="rfF1">-</strong> | Prec: <strong id="rfPrec">-</strong> | Rec: <strong id="rfRec">-</strong></small></div>
+                <div class="p-2 mt-1" style="border-left:3px solid #f1c40f;background:rgba(241,196,15,0.03);border-radius:6px"><strong class="text-warning small">Decision Tree</strong><small class="d-block">Accuracy: <strong id="dtAcc">-</strong> | F1: <strong id="dtF1">-</strong> | Prec: <strong id="dtPrec">-</strong> | Rec: <strong id="dtRec">-</strong></small></div>
+                <div class="p-2 mt-1" style="border-left:3px solid #27ae60;background:rgba(39,174,96,0.03);border-radius:6px"><strong class="text-success small">XGBoost</strong><small class="d-block">Accuracy: <strong id="xgbAcc">-</strong> | F1: <strong id="xgbF1">-</strong> | Prec: <strong id="xgbPrec">-</strong> | Rec: <strong id="xgbRec">-</strong></small></div>
+                <small class="text-muted d-block mt-2" id="metricDetails"></small>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if model_metrics and model_metrics.meta %}
+<div class="section-card">
+    <h5 class="section-title"><i class="bi bi-clock-history me-2"></i> Last Training</h5>
+    <div class="row g-3">
+        <div class="col-md-4"><div class="p-3" style="background:rgba(231,76,60,0.04);border-radius:8px"><h6 class="text-danger"><i class="bi bi-tree me-1"></i> Random Forest</h6><p class="mb-0">Acc: <strong>{{ model_metrics.random_forest.accuracy }}%</strong> | F1: <strong>{{ model_metrics.random_forest.f1_score }}%</strong></p></div></div>
+        <div class="col-md-4"><div class="p-3" style="background:rgba(241,196,15,0.04);border-radius:8px"><h6 class="text-warning"><i class="bi bi-diagram-3 me-1"></i> Decision Tree</h6><p class="mb-0">Acc: <strong>{{ model_metrics.decision_tree.accuracy }}%</strong> | F1: <strong>{{ model_metrics.decision_tree.f1_score }}%</strong></p></div></div>
+        <div class="col-md-4"><div class="p-3" style="background:rgba(39,174,96,0.04);border-radius:8px"><h6 class="text-success"><i class="bi bi-stars me-1"></i> XGBoost</h6><p class="mb-0">Acc: <strong>{{ model_metrics.xgboost.accuracy }}%</strong> | F1: <strong>{{ model_metrics.xgboost.f1_score }}%</strong></p></div></div>
+    </div>
+    <p class="text-muted small mt-2 mb-0">Features: {{ model_metrics.meta.features }} | Balanced rows: {{ model_metrics.meta.balanced_samples if model_metrics.meta.balanced_samples else '?' }} | Train: {{ model_metrics.meta.train_samples }} | Test: {{ model_metrics.meta.test_samples }}</p>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+function startTraining() {
+    const btn = document.getElementById('btnTrain');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="bi bi-hourglass-split me-2"></i> Training...';
+    document.getElementById('metricsSection').style.display = 'none';
+
+    fetch('/api/train', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({dataset: 'ciciot23', sample_frac: document.getElementById('sampleFrac').value})
+    }).then(r => r.json()).then(data => {
+        if (data.error) {
+            alert(data.error);
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-play-circle me-2"></i> Start Training';
+            return;
+        }
+        pollTraining();
+    }).catch(err => {
+        alert('Error: ' + err);
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-play-circle me-2"></i> Start Training';
+    });
+}
+
+function pollTraining() {
+    const iv = setInterval(() => {
+        fetch('/api/train-status').then(r => r.json()).then(s => {
+            document.getElementById('progressMessage').textContent = s.message;
+            document.getElementById('progressPercent').textContent = s.progress + '%';
+            document.getElementById('progressBar').style.width = s.progress + '%';
+            if (!s.running) {
+                clearInterval(iv);
+                document.getElementById('btnTrain').disabled = false;
+                document.getElementById('btnTrain').innerHTML = '<i class="bi bi-play-circle me-2"></i> Start Training';
+                if (s.metrics) {
+                    document.getElementById('metricsSection').style.display = 'block';
+                    const m = s.metrics;
+                    document.getElementById('rfAcc').textContent = m.random_forest.accuracy + '%';
+                    document.getElementById('rfF1').textContent = m.random_forest.f1_score + '%';
+                    document.getElementById('rfPrec').textContent = m.random_forest.precision + '%';
+                    document.getElementById('rfRec').textContent = m.random_forest.recall + '%';
+                    document.getElementById('dtAcc').textContent = m.decision_tree.accuracy + '%';
+                    document.getElementById('dtF1').textContent = m.decision_tree.f1_score + '%';
+                    document.getElementById('dtPrec').textContent = m.decision_tree.precision + '%';
+                    document.getElementById('dtRec').textContent = m.decision_tree.recall + '%';
+                    document.getElementById('xgbAcc').textContent = m.xgboost.accuracy + '%';
+                    document.getElementById('xgbF1').textContent = m.xgboost.f1_score + '%';
+                    document.getElementById('xgbPrec').textContent = m.xgboost.precision + '%';
+                    document.getElementById('xgbRec').textContent = m.xgboost.recall + '%';
+                    document.getElementById('metricDetails').innerHTML = '<strong>Balanced rows:</strong> ' + (m.meta.balanced_samples || '-') + ' | <strong>Features:</strong> ' + m.meta.features + ' | <strong>Train:</strong> ' + m.meta.train_samples + ' | <strong>Test:</strong> ' + m.meta.test_samples;
+                    document.getElementById('progressMessage').textContent = 'Training complete. Refreshing...';
+                    setTimeout(() => window.location.reload(), 1200);
+                }
+            }
+        });
+    }, 2000);
+}
+</script>
+{% endblock %}
