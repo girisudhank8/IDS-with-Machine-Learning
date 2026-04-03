@@ -1,0 +1,176 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<!-- Welcome Banner -->
+<div class="welcome-banner">
+    <span><i class="bi bi-check-circle-fill text-success me-2"></i> System Active — IDS Monitoring Ready</span>
+    <button class="btn-close-alert" onclick="this.parentElement.remove()">×</button>
+</div>
+
+<!-- ═══ NETWORK IDS PANEL ═══ -->
+<div class="ids-panel">
+    <div class="ids-panel-header">
+        <div>
+            <h2 class="ids-panel-title">Network IDS Panel</h2>
+            <p class="ids-panel-subtitle">Intrusion detection and threat analysis results</p>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+            <button class="btn-refresh" onclick="location.reload()"><i class="bi bi-arrow-clockwise"></i> Refresh</button>
+        </div>
+    </div>
+    <div class="ids-stats-row">
+        <div class="stat-card stat-blue">
+            <div class="stat-icon bg-blue"><i class="bi bi-graph-up-arrow"></i></div>
+            <div class="stat-label">TOTAL REQUESTS</div>
+            <div class="stat-value">{{ total }}</div>
+            <div class="stat-sub"><i class="bi bi-arrow-up"></i> Active</div>
+        </div>
+        <div class="stat-card stat-red">
+            <div class="stat-icon bg-red"><i class="bi bi-shield-exclamation"></i></div>
+            <div class="stat-label">THREATS DETECTED</div>
+            <div class="stat-value text-danger">{{ attacks }}</div>
+            <div class="stat-sub text-danger"><i class="bi bi-exclamation-triangle"></i> {{ "%.1f"|format(attacks/total*100) if total > 0 else 0 }}% detection rate</div>
+        </div>
+        <div class="stat-card stat-green">
+            <div class="stat-icon bg-green"><i class="bi bi-shield-check"></i></div>
+            <div class="stat-label">SECURE CONNECTIONS</div>
+            <div class="stat-value text-success">{{ benign }}</div>
+            <div class="stat-sub text-success"><i class="bi bi-check-circle"></i> {{ "%.1f"|format(benign/total*100) if total > 0 else 99.5 }}% secure</div>
+        </div>
+    </div>
+</div>
+
+<!-- ═══ ML PERFORMANCE ═══ -->
+<div class="section-card">
+    <h5 class="section-title"><i class="bi bi-gear-fill text-success me-2"></i> Performance of the machine learning algorithm</h5>
+    <div class="row g-4 mt-2">
+        <div class="col-md-4">
+            <div class="algo-card">
+                <span class="algo-badge badge-green"><i class="bi bi-trophy-fill"></i> Ensemble</span>
+                <h6 class="algo-name">Random Forest</h6>
+                <p class="algo-desc">Uses multiple decision trees for robust classification.</p>
+                {% if model_metrics and model_metrics.random_forest %}
+                <div class="algo-accuracy text-danger">Accuracy: {{ model_metrics.random_forest.accuracy }}%</div>
+                <div class="algo-bar bg-danger"></div>
+                <div class="algo-metrics">F1: {{ model_metrics.random_forest.f1_score }}% &nbsp; Prec: {{ model_metrics.random_forest.precision }}% &nbsp; Rec: {{ model_metrics.random_forest.recall }}%</div>
+                {% else %}
+                <div class="algo-accuracy text-muted">Not yet trained</div>
+                <div class="algo-bar bg-secondary" style="width:30%"></div>
+                <div class="algo-metrics text-muted">Train a model from the Training page</div>
+                {% endif %}
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="algo-card">
+                <span class="algo-badge badge-yellow"><i class="bi bi-hand-thumbs-up-fill"></i> Interpretable</span>
+                <h6 class="algo-name">Decision Tree</h6>
+                <p class="algo-desc">Clear decision paths for security analysis.</p>
+                {% if model_metrics and model_metrics.decision_tree %}
+                <div class="algo-accuracy text-warning">Accuracy: {{ model_metrics.decision_tree.accuracy }}%</div>
+                <div class="algo-bar bg-warning"></div>
+                <div class="algo-metrics">F1: {{ model_metrics.decision_tree.f1_score }}% &nbsp; Prec: {{ model_metrics.decision_tree.precision }}% &nbsp; Rec: {{ model_metrics.decision_tree.recall }}%</div>
+                {% else %}
+                <div class="algo-accuracy text-muted">Not yet trained</div>
+                <div class="algo-bar bg-secondary" style="width:30%"></div>
+                <div class="algo-metrics text-muted">Train a model from the Training page</div>
+                {% endif %}
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="algo-card">
+                <span class="algo-badge badge-green"><i class="bi bi-stars"></i> Primary Model</span>
+                <h6 class="algo-name">XGBoost</h6>
+                <p class="algo-desc">Gradient boosted trees — used for all predictions.</p>
+                {% if model_metrics and model_metrics.xgboost %}
+                <div class="algo-accuracy text-success">Accuracy: {{ model_metrics.xgboost.accuracy }}%</div>
+                <div class="algo-bar bg-success"></div>
+                <div class="algo-metrics">F1: {{ model_metrics.xgboost.f1_score }}% &nbsp; Prec: {{ model_metrics.xgboost.precision }}% &nbsp; Rec: {{ model_metrics.xgboost.recall }}%</div>
+                {% else %}
+                <div class="algo-accuracy text-muted">Not yet trained</div>
+                <div class="algo-bar bg-secondary" style="width:30%"></div>
+                <div class="algo-metrics text-muted">Train a model from the Training page</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ═══ CHARTS ROW ═══ -->
+<div class="row g-4">
+    <div class="col-lg-8">
+        <div class="section-card">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="section-title mb-0"><i class="bi bi-graph-up me-2"></i> Overview of network activity</h5>
+                <span class="badge-24h">24H</span>
+            </div>
+            <div style="position:relative;height:280px"><canvas id="activityChart"></canvas></div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="section-card">
+            <h5 class="section-title"><i class="bi bi-pie-chart me-2"></i> Distribution of attack types</h5>
+            <div style="position:relative;height:250px"><canvas id="attackDonutChart"></canvas></div>
+            <div id="donutLegend" class="donut-legend mt-3"></div>
+        </div>
+    </div>
+</div>
+
+<!-- ═══ ALGORITHM COMPARISON ═══ -->
+<div class="section-card">
+    <h5 class="section-title"><i class="bi bi-bar-chart-fill me-2"></i> Comparison of algorithm accuracy</h5>
+    <div style="position:relative;height:280px"><canvas id="algoComparisonChart"></canvas></div>
+</div>
+
+<!-- ═══ RECENT DETECTIONS + QUICK ACTIONS ═══ -->
+<div class="row g-4">
+    <div class="col-lg-5">
+        <div class="section-card">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="section-title mb-0"><i class="bi bi-broadcast me-2"></i> Recent detections</h5>
+                <span class="badge bg-danger rounded-pill">{{ attacks }} threats</span>
+            </div>
+            <div class="recent-list">
+                {% if recent %}
+                    {% for r in recent[:6] %}
+                    <div class="recent-item">
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="dot {% if r.prediction == 'Attack' %}dot-red{% else %}dot-green{% endif %}"></span>
+                            <span class="fw-semibold">{{ r.ip_address }}</span>
+                            <span class="badge {% if r.prediction == 'Attack' %}bg-danger{% else %}bg-success{% endif %} badge-sm">{{ r.attack_type }}</span>
+                        </div>
+                        <div class="d-flex justify-content-between mt-1">
+                            <small class="text-muted"><i class="bi bi-clock"></i> {{ r.timestamp }}</small>
+                            <small class="{% if r.prediction == 'Attack' %}text-danger{% else %}text-success{% endif %}">
+                                {% if r.prediction == 'Attack' %}Threat{% else %}Safe{% endif %}
+                            </small>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <p class="text-muted text-center py-3">No detections yet. Upload a CSV to analyze traffic.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-7">
+        <div class="section-card">
+            <h5 class="section-title"><i class="bi bi-lightning-fill me-2"></i> Quick actions</h5>
+            <a href="{{ url_for('upload') }}" class="quick-action-btn">
+                <i class="bi bi-cloud-upload me-2"></i> Analyze traffic data
+            </a>
+            <a href="{{ url_for('overview') }}" class="quick-action-btn btn-outline mt-3">
+                <i class="bi bi-info-circle me-2"></i> General Information
+            </a>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const attackTypesData = {{ attack_types|safe }};
+    initDashboardCharts(attackTypesData, {{ total }}, {{ attacks }}, {{ benign }});
+</script>
+{% endblock %}

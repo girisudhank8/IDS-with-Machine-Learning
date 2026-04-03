@@ -1,0 +1,91 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<h3 class="page-title mb-4"><i class="bi bi-shield-x me-2"></i> Blocked IPs Management</h3>
+
+<!-- ═══ CURRENTLY BLOCKED ═══ -->
+<div class="blocked-section">
+    <div class="blocked-header">
+        <i class="bi bi-exclamation-circle me-2"></i> Currently Blocked IPs ({{ blocked|length }})
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover mb-0">
+            <thead class="table-warning">
+                <tr>
+                    <th>IP Address</th>
+                    <th>Attack Type</th>
+                    <th>Blocked At</th>
+                    <th>Block Count</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="blockedTable">
+                {% if blocked %}
+                    {% for b in blocked %}
+                    <tr id="blocked-{{ b.ip|replace('.', '-') }}">
+                        <td class="fw-semibold">{{ b.ip }}</td>
+                        <td><span class="badge bg-danger">{{ b.attack_type }}</span></td>
+                        <td>{{ b.blocked_at }}</td>
+                        <td><span class="badge bg-warning text-dark">{{ b.block_count }}</span></td>
+                        <td>
+                            <button class="btn-unblock" onclick="unblockIP('{{ b.ip }}')">
+                                <i class="bi bi-unlock me-1"></i> Unblock
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr id="no-blocked-row"><td colspan="5" class="text-center text-muted py-3">No IPs currently blocked.</td></tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- ═══ RECENTLY UNBLOCKED ═══ -->
+<div class="blocked-section mt-4">
+    <div class="blocked-header header-green">
+        <i class="bi bi-clock-history me-2"></i> Recently Unblocked IPs
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover mb-0">
+            <thead>
+                <tr>
+                    <th>IP Address</th>
+                    <th>Attack Type</th>
+                    <th>Blocked At</th>
+                    <th>Unblocked At</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if unblocked %}
+                    {% for u in unblocked %}
+                    <tr>
+                        <td>{{ u.ip }}</td>
+                        <td><span class="badge bg-secondary">{{ u.attack_type }}</span></td>
+                        <td>{{ u.blocked_at }}</td>
+                        <td>{{ u.unblocked_at }}</td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr><td colspan="4" class="text-muted text-center py-3">No unblock history available.</td></tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+function unblockIP(ip) {
+    if (!confirm('Unblock IP ' + ip + '?')) return;
+    fetch('/api/unblock-ip', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ip: ip})
+    }).then(r => r.json()).then(() => location.reload());
+}
+</script>
+{% endblock %}

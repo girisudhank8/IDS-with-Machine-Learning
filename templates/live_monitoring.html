@@ -1,0 +1,284 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<!-- Header -->
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div class="d-flex align-items-center gap-3">
+        <span class="status-dot" id="statusDot" style="width:12px;height:12px;border-radius:50%;background:#aaa;display:inline-block"></span>
+        <span class="text-muted" id="headerStatus">Live packet analysis engine and real-time threat detection</span>
+    </div>
+    <div class="d-flex gap-2">
+        <button class="btn btn-success px-4 py-2 fw-bold" id="btnStart" onclick="startMonitoring()">
+            <i class="bi bi-play-fill me-1"></i> Start Monitoring
+        </button>
+        <button class="btn btn-danger px-4 py-2 fw-bold" id="btnStop" onclick="stopMonitoring()" disabled>
+            <i class="bi bi-stop-fill me-1"></i> Stop
+        </button>
+    </div>
+</div>
+
+<!-- Main Layout: Terminal + Side Panel -->
+<div class="row g-4 mb-4">
+    <!-- Terminal -->
+    <div class="col-lg-8">
+        <div id="terminalSection" style="background:#1a1d23;border-radius:16px;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,0.3)">
+            <div style="background:#252830;padding:8px 16px;display:flex;align-items:center;gap:8px">
+                <span style="width:12px;height:12px;border-radius:50%;background:#ff5f57"></span>
+                <span style="width:12px;height:12px;border-radius:50%;background:#febc2e"></span>
+                <span style="width:12px;height:12px;border-radius:50%;background:#28c840"></span>
+                <span style="margin-left:12px;color:#888;font-size:13px">Network Monitor Console</span>
+            </div>
+            <div id="terminalBody" style="padding:24px;min-height:380px;max-height:420px;overflow-y:auto;font-family:'JetBrains Mono','Fira Code','Cascadia Code',monospace;font-size:13px;line-height:1.7">
+                <div id="terminalWelcome" style="text-align:center;padding:60px 0">
+                    <div style="width:60px;height:60px;border:2px solid #4a90d9;border-radius:12px;display:inline-flex;align-items:center;justify-content:center;margin-bottom:16px">
+                        <i class="bi bi-terminal" style="font-size:28px;color:#4a90d9"></i>
+                    </div>
+                    <h5 style="color:#c9d1d9;margin-bottom:8px">Advanced Monitoring Console Ready</h5>
+                    <p style="color:#8b949e;font-size:13px">Click "Start Monitoring" to begin real-time network analysis</p>
+                </div>
+                <div id="terminalLogs" style="display:none"></div>
+            </div>
+            <div style="background:#252830;padding:8px 16px;display:flex;justify-content:space-between;font-size:12px;color:#666">
+                <span><i class="bi bi-info-circle me-1"></i> Live logs from <code style="color:#58a6ff;background:rgba(88,166,255,0.1);padding:1px 6px;border-radius:4px">app.py</code></span>
+                <span><i class="bi bi-clock me-1"></i> Last event: <span id="lastEvent">—</span></span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Side Panel -->
+    <div class="col-lg-4">
+        <div class="section-card mb-3" style="border-left:3px solid #e74c3c">
+            <h6 class="fw-bold text-muted mb-2" style="font-size:13px">Compact security notifications</h6>
+            <div id="notificationArea" style="max-height:120px;overflow-y:auto">
+                <p class="text-muted small mb-0">No alerts yet. Start monitoring to see real-time events.</p>
+            </div>
+        </div>
+
+        <div class="section-card">
+            <h6 class="fw-bold text-muted mb-3" style="font-size:13px">Monitoring system overview</h6>
+
+            <div class="mb-3">
+                <div class="d-flex align-items-start gap-2">
+                    <span style="width:28px;height:28px;border-radius:50%;background:rgba(52,152,219,0.1);display:inline-flex;align-items:center;justify-content:center;flex-shrink:0">
+                        <i class="bi bi-cpu text-primary" style="font-size:14px"></i>
+                    </span>
+                    <div>
+                        <strong style="font-size:14px">AI Detection Engine</strong>
+                        <p class="text-muted small mb-0">Balanced CIC-IoT23 model analyzes captured packet features for threat detection.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <div class="d-flex align-items-start gap-2">
+                    <span style="width:28px;height:28px;border-radius:50%;background:rgba(241,196,15,0.1);display:inline-flex;align-items:center;justify-content:center;flex-shrink:0">
+                        <i class="bi bi-lightning text-warning" style="font-size:14px"></i>
+                    </span>
+                    <div>
+                        <strong style="font-size:14px">Real-time Alerts</strong>
+                        <p class="text-muted small mb-0">Security events with <span class="badge bg-warning text-dark" style="font-size:10px">CATEGORY</span> are automatically classified.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div>
+                <div class="d-flex align-items-start gap-2">
+                    <span style="width:28px;height:28px;border-radius:50%;background:rgba(39,174,96,0.1);display:inline-flex;align-items:center;justify-content:center;flex-shrink:0">
+                        <i class="bi bi-shield-check text-success" style="font-size:14px"></i>
+                    </span>
+                    <div>
+                        <strong style="font-size:14px">Combined Analysis</strong>
+                        <p class="text-muted small mb-0">Heuristic rules + ML prediction compared. Six named categories are shown when confidently matched; everything else is grouped as <strong>Suspicious Activity</strong>.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Stats Row -->
+<div class="row g-3 mb-4">
+    <div class="col-md-2"><div class="section-card text-center py-2"><h5 class="fw-bold text-primary mb-0" id="totalPkts">0</h5><small class="text-muted">PACKETS</small></div></div>
+    <div class="col-md-2"><div class="section-card text-center py-2"><h5 class="fw-bold text-info mb-0" id="totalFlows">0</h5><small class="text-muted">FLOWS</small></div></div>
+    <div class="col-md-2"><div class="section-card text-center py-2"><h5 class="fw-bold text-success mb-0" id="totalNormal">0</h5><small class="text-muted">NORMAL</small></div></div>
+    <div class="col-md-2"><div class="section-card text-center py-2"><h5 class="fw-bold text-danger mb-0" id="totalThreats">0</h5><small class="text-muted">THREATS</small></div></div>
+    <div class="col-md-2"><div class="section-card text-center py-2"><h5 class="fw-bold text-dark mb-0" id="uptime">00:00</h5><small class="text-muted">UPTIME</small></div></div>
+    <div class="col-md-2"><div class="section-card text-center py-2"><h5 class="fw-bold mb-0" id="captureMode" style="font-size:14px">—</h5><small class="text-muted">MODE</small></div></div>
+</div>
+
+<!-- Detection Table -->
+<div class="section-card">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="section-title mb-0"><i class="bi bi-shield-check me-2"></i> Live Detection Results</h5>
+        <input type="text" class="form-control form-control-sm" placeholder="Search..." id="tblSearch" style="width:150px" onkeyup="filterTable()">
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover table-sm mb-0" id="detectionTable">
+            <thead>
+                <tr>
+                    <th>REMOTE IP</th><th>DIRECTION</th><th>PKTS</th><th>PORTS</th>
+                    <th>PREDICTION</th><th>TYPE</th><th>CONFIDENCE</th>
+                </tr>
+            </thead>
+            <tbody id="detectionBody">
+                <tr><td colspan="7" class="text-center text-muted py-3">Start monitoring to see network activity.</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+let pollInterval = null, uptimeInterval = null;
+
+const TERM_COLORS = {red:'#f87171', green:'#4ade80', blue:'#60a5fa', yellow:'#facc15', cyan:'#22d3ee', orange:'#fb923c', white:'#c9d1d9', gray:'#6b7280'};
+
+function formatUptime(totalSeconds) {
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return String(minutes).padStart(2, '0') + ':' + String(seconds).padStart(2, '0');
+}
+
+function syncMonitoringUi(active, hasSessionData) {
+    document.getElementById('btnStart').disabled = active;
+    document.getElementById('btnStop').disabled = !active;
+    document.getElementById('statusDot').style.background = active ? '#28c840' : (hasSessionData ? '#facc15' : '#aaa');
+    document.getElementById('headerStatus').textContent = active
+        ? 'Monitoring active — capturing network traffic'
+        : (hasSessionData ? 'Showing saved monitoring session results' : 'Live packet analysis engine and real-time threat detection');
+    document.getElementById('terminalWelcome').style.display = hasSessionData ? 'none' : 'block';
+    document.getElementById('terminalLogs').style.display = hasSessionData ? 'block' : 'none';
+}
+
+function syncUptime(startTime, active) {
+    clearInterval(uptimeInterval);
+    uptimeInterval = null;
+
+    if (!startTime) {
+        document.getElementById('uptime').textContent = '00:00';
+        return;
+    }
+
+    const refresh = () => {
+        const elapsed = Math.max(0, Math.floor(Date.now() / 1000 - startTime));
+        document.getElementById('uptime').textContent = formatUptime(elapsed);
+    };
+
+    refresh();
+    if (active) uptimeInterval = setInterval(refresh, 1000);
+}
+
+function startMonitoring() {
+    fetch('/api/live-start', {method:'POST'}).then(r=>r.json()).then(() => {
+        document.getElementById('notificationArea').innerHTML = '<p class="text-muted small mb-0">Waiting for live traffic...</p>';
+        document.getElementById('detectionBody').innerHTML = '<tr><td colspan="7" class="text-center text-muted py-3">Listening for live flows...</td></tr>';
+        if (pollInterval) clearInterval(pollInterval);
+        pollInterval = setInterval(pollData, 1000);
+        pollData();
+    });
+}
+
+function stopMonitoring() {
+    fetch('/api/live-stop', {method:'POST'}).then(() => {
+        clearInterval(pollInterval);
+        pollInterval = null;
+        pollData();
+    });
+}
+
+function pollData() {
+    fetch('/api/live-poll').then(r=>r.json()).then(data => {
+        const s = data.stats || {};
+        const hasSessionData = Boolean(data.active || data.logs.length || data.results.length || (s.total_packets || 0) > 0);
+
+        if (!data.active && !hasSessionData) {
+            syncMonitoringUi(false, false);
+            syncUptime(null, false);
+            document.getElementById('lastEvent').textContent = '—';
+            return;
+        }
+
+        syncMonitoringUi(Boolean(data.active), hasSessionData);
+        syncUptime(s.start_time, Boolean(data.active));
+
+        if (data.active && !pollInterval) pollInterval = setInterval(pollData, 1000);
+        if (!data.active && pollInterval) {
+            clearInterval(pollInterval);
+            pollInterval = null;
+        }
+
+        document.getElementById('totalPkts').textContent = (s.total_packets || 0).toLocaleString();
+        document.getElementById('totalFlows').textContent = (s.total_flows || 0).toLocaleString();
+        document.getElementById('totalNormal').textContent = s.normal || 0;
+        document.getElementById('totalThreats').textContent = s.threats || 0;
+        document.getElementById('captureMode').textContent = s.capture_mode === 'scapy' ? 'Packet' : (s.capture_mode ? 'Connection' : '—');
+        document.getElementById('lastEvent').textContent = s.last_event || '—';
+
+        const termLogs = document.getElementById('terminalLogs');
+        termLogs.innerHTML = '';
+        data.logs.forEach(log => {
+            const div = document.createElement('div');
+            div.style.color = TERM_COLORS[log.color] || TERM_COLORS.white;
+            div.style.whiteSpace = 'pre-wrap';
+            div.style.wordBreak = 'break-all';
+            div.textContent = log.text;
+            termLogs.appendChild(div);
+        });
+        document.getElementById('terminalBody').scrollTop = document.getElementById('terminalBody').scrollHeight;
+
+        const notifArea = document.getElementById('notificationArea');
+        const threats = data.results.filter(r => r.prediction === 'Attack');
+        if (threats.length > 0) {
+            notifArea.innerHTML = '';
+            threats.slice(0, 5).forEach(t => {
+                const d = document.createElement('div');
+                d.className = 'mb-1 p-2';
+                d.style.cssText = 'background:rgba(231,76,60,0.05);border-radius:6px;border-left:3px solid #e74c3c';
+                d.innerHTML = '<small class="text-danger fw-bold">' + t.attack_type + '</small><br><small class="text-muted">' + (t.direction === 'outgoing' ? 'Outgoing to ' : 'Incoming from ') + t.ip_address + ' — ' + t.timestamp + '</small>';
+                notifArea.appendChild(d);
+            });
+        } else {
+            notifArea.innerHTML = '<p class="text-muted small mb-0">' + (data.active ? 'No alerts yet. Live traffic is being analyzed.' : 'No threat alerts were recorded in this session.') + '</p>';
+        }
+
+        const tbody = document.getElementById('detectionBody');
+        if (data.results.length > 0) {
+            tbody.innerHTML = '';
+            data.results.forEach(r => {
+                const tr = document.createElement('tr');
+                const predBadge = r.prediction === 'Attack' ? 'bg-danger' : 'bg-success';
+                const dirBadge = r.direction === 'outgoing' ? 'bg-primary' : 'bg-secondary';
+                const dirLabel = r.direction === 'outgoing' ? 'Outgoing' : 'Incoming';
+
+                tr.innerHTML =
+                    '<td><code style="color:#333;font-size:12px">' + r.ip_address + '</code></td>' +
+                    '<td><span class="badge ' + dirBadge + '">' + dirLabel + '</span></td>' +
+                    '<td>' + (r.packets || 1) + '</td>' +
+                    '<td><small>' + (r.ports || '—') + '</small></td>' +
+                    '<td><span class="badge ' + predBadge + '">' + r.prediction + '</span></td>' +
+                    '<td>' + r.attack_type + '</td>' +
+                    '<td>' + r.confidence + '%</td>';
+                tbody.appendChild(tr);
+            });
+        } else {
+            tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-3">Traffic captured, but no rows were stored for this session.</td></tr>';
+        }
+
+        filterTable();
+    }).catch(err => console.error('Poll error:', err));
+}
+
+function filterTable() {
+    const q = document.getElementById('tblSearch').value.toLowerCase();
+    document.querySelectorAll('#detectionTable tbody tr').forEach(r => {
+        r.style.display = r.textContent.toLowerCase().includes(q) ? '' : 'none';
+    });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    pollData();
+});
+</script>
+{% endblock %}
